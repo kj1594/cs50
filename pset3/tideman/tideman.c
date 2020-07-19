@@ -34,6 +34,9 @@ void sort_pairs(void);
 void lock_pairs(void);
 void print_winner(void);
 
+// functions declared by me
+bool cyclic_check(int candidate_a, int candidate_b);
+
 int main(int argc, string argv[])
 {
     // Check for invalid usage
@@ -133,12 +136,7 @@ void record_preferences(int ranks[])
                     /* incrementing the votes for candidate present at ranks[i] over the one at ranks[j] */
                     preferences[ranks[i]][ranks[j]] += 1;
                 }
-                /* ranks[j] would be the higher rank than ranks[i] in this case */
-                else
-                {
-                    /* else incrementing the votes for candidate present at ranks[j] over the one at ranks[i] */
-                    preferences[ranks[j]][ranks[i]] += 1;
-                }
+                /* the else cases will eventtually get covered in the subsequent runs of this loop */
             }
         }
     }
@@ -153,21 +151,17 @@ void add_pairs(void)
     {
         for (int j = 0; j < candidate_count; j++)
         {
+            /* no candidate is to compete against himself */
             if (i != j)
             {
+                /* preferences[i][j] = no. of voters who prefer i over j */
                 if (preferences[i][j] > preferences[j][i])
                 {
                     pairs[pair_count].winner = i;
                     pairs[pair_count].loser = j;
                     pair_count += 1;
                 }
-                else if (preferences[i][j] < preferences[j][i])
-                {
-                    pairs[pair_count].winner = j;
-                    pairs[pair_count].loser = i;
-                    pair_count += 1;
-                }
-                /* excluding the case where they are equal */
+                /* else parts will be satisfied in subsequent runs of the loop */
             }
         }
     }
@@ -177,6 +171,12 @@ void add_pairs(void)
 // Sort pairs in decreasing order by strength of victory
 void sort_pairs(void)
 {
+    /**
+     * The idea is:
+     * - compare all pairs against each other one by one
+     * - the pair with higher votes should always occupy lower index
+     * - swap current pair with the one compared against, if necessary
+    */
     /* variable for swapping */
     pair temp;
     /* iterating through pairs */
@@ -187,25 +187,25 @@ void sort_pairs(void)
             /* not wanting to sort the same pair :p */
             if (i != j)
             {
-                /* if the place of first pair is lower */
+                /* if the candidate i is behind j*/
                 if (i > j)
                 {
-                    /* if they have more votes*/
+                    /* but has more votes than the other pair */
                     if (preferences[pairs[i].winner][pairs[i].loser] > preferences[pairs[j].winner][pairs[j].loser])
                     {
-                        /* swap them to a higher place */
+                        /* swap i to the place of j */
                         temp = pairs[i];
                         pairs[i] = pairs[j];
                         pairs[j] = temp;
                     }
                 }
-                /* else if they are lower */
+                /* else if the candidate i is ahead of j */
                 else
                 {
-                    /* but have lesser votes */
+                    /* but has lesser votes than the other pair */
                     if (preferences[pairs[i].winner][pairs[i].loser] < preferences[pairs[j].winner][pairs[j].loser])
                     {
-                        /* swap them lower */
+                        /* swap i to the position of j */
                         temp = pairs[j];
                         pairs[j] = pairs[i];
                         pairs[i] = temp;
@@ -220,14 +220,76 @@ void sort_pairs(void)
 // Lock pairs into the candidate graph in order, without creating cycles
 void lock_pairs(void)
 {
-    // TODO
+    /* looping through pairs if there are no cycles in it, lock them */
+    for (int i = 0; i < pair_count; i++)
+    {
+        if (!locked[pairs[i].winner][pairs[i].loser])
+        {
+            if (!cyclic_check(pairs[i].winner, pairs[i].loser))
+            {
+                locked[pairs[i].winner][pairs[i].loser] = true;
+            }
+        }
+    }
     return;
 }
 
 // Print the winner of the election
 void print_winner(void)
 {
-    // TODO
+    /* if no other candidate locks on to a candidate - he is the winner */
+    /* we are to assume that there is only one winner */
+    for (int i = 0; i < candidate_count; i++)
+    {
+        /* counter to see if the given candidate is locked */
+        int counter = 0;
+        for (int j = 0; j < candidate_count; j++)
+        {
+            /* if the given candidate is locked */
+            if (locked[j][i] == true)
+            {
+                /* no need to check further */
+                counter += 1;
+                break;
+            }
+            /* else print him as a winner */
+        }
+        if (counter == 0)
+        {
+            printf("%s\n", candidates[i]);
+        }
+    }
     return;
 }
 
+
+bool cyclic_check(int candidate_a, int candidate_b)
+{
+    /** 
+     * if candidate_a has an edge over candidate_b
+     * and if candidate_b has an edge over candidate_a
+     * then i is obviously a cycle A -> B and B -> A 
+     */
+
+    if (locked[candidate_b][candidate_a] == true)
+    {
+        return true;
+    }
+
+    /* check if there is a cycle in any candidate in he list */
+    for (int i = 0; i < candidate_count; i++)
+    {
+        /**
+         * say the candidate i has an edge over candidate_a
+         * if candidate_b has an edge over i and
+         * candidate_a has an edge over candidate_b
+         * then we are running in circles
+        */
+        if ((i != candidate_b) && (locked[i][candidate_a] == true))
+        {
+            /* it has to be recursive to identify intermediate circles */
+            return cyclic_check(i, candidate_b);
+        }
+    }
+    return false;
+}
