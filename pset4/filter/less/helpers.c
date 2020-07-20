@@ -86,7 +86,7 @@ void grayscale(int height, int width, RGBTRIPLE image[height][width])
             int average = 0;
             
             /* rounding them to integers */
-            average = round((image[i][j].rgbtRed + image[i][j].rgbtBlue + image[i][j].rgbtGreen) / 3);
+            average = round(((float)(image[i][j].rgbtRed + image[i][j].rgbtBlue + image[i][j].rgbtGreen)) / 3);
             /* capping the value of colors to 255 */
             if (average > 255)
             {
@@ -145,7 +145,7 @@ void reflect(int height, int width, RGBTRIPLE image[height][width])
 
     /* determining the midpoint of the image */
     int middle = 0;
-    if ( width % 2 == 0)
+    if (width % 2 == 0)
     {
         middle = width / 2;
     }
@@ -216,11 +216,11 @@ void blur(int height, int width, RGBTRIPLE image[height][width])
      * color[1] - green
      * color[2] - red
     */
-   int color[3];
-   /**
-    * traversing the new image excluding the borders
-    * the purpose of the border is to ensure that 0 values
-    * for the edge and corner pixels are available - see the comment below
+    int color[3];
+    /**
+     * traversing the new image excluding the borders
+     * the purpose of the border is to ensure that 0 values
+     * for the edge and corner pixels are available - see the comment below
     */
     for (int i = 1; i < height + 1; i++)
     {
@@ -276,7 +276,7 @@ void blur(int height, int width, RGBTRIPLE image[height][width])
                     /* averaging and rounding the colors and capping them */
                     for (int k = 0; k < 3; k++)
                     {
-                        color[k] = round(color[k] / 4);
+                        color[k] = round((float) color[k] / 4);
                         if (color[k] > 255)
                         {
                             color[k] = 255;
@@ -289,7 +289,7 @@ void blur(int height, int width, RGBTRIPLE image[height][width])
                     /* averaging, rounding and capping the colors */
                     for (int k = 0; k < 3; k++)
                     {
-                        color[k] = round(color[k] / 6);
+                        color[k] = round((float) color[k] / 6);
                         if (color[k] > 255)
                         {
                             color[k] = 255;
@@ -304,7 +304,7 @@ void blur(int height, int width, RGBTRIPLE image[height][width])
                 /* averaging, rounding and capping */
                 for (int k = 0; k < 3; k++)
                 {
-                    color[k] = round(color[k] / 9);
+                    color[k] = round((float) color[k] / 9);
                     if (color[k] > 255)
                     {
                         color[k] = 255;
