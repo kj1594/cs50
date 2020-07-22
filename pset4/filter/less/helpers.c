@@ -178,8 +178,6 @@ void reflect(int height, int width, RGBTRIPLE image[height][width])
 // Blur image
 void blur(int height, int width, RGBTRIPLE image[height][width])
 {
-    /* oh boy this is going to be long */
-
     /* creating a false frame around the image of 1 pixel and storing it as a new image */
     RGBTRIPLE new_image[height + 2][width + 2];
     for (int i = 0; i < height + 2; i++)
@@ -230,43 +228,24 @@ void blur(int height, int width, RGBTRIPLE image[height][width])
              *  all this fuss about making the border now ensures that 
              * i - 1 and j - 1 and i + 1 and j + 1
              * are always defined and never go out of bound
+             * the loops below sums the reds, blues and the greens of
+             * the surrounding 8 pixels and the current pixel
+             * h ranges from -1 to 1 an so does k
+             * this loop traverses from [i - 1][j - 1] to [i + 1][j + 1] and all the possiblities in between
              */
-            
-            /** 
-             * the ugly part of the code
-             * this sums the reds, blues and the greens of
-             * the surrounding 8 pixels and the current pixel 
-             */
-            color[0] = new_image[i - 1][j - 1].rgbtBlue +
-                       new_image[i - 1][j].rgbtBlue +
-                       new_image[i - 1][j + 1].rgbtBlue +
-                       new_image[i][j - 1].rgbtBlue +
-                       new_image[i][j].rgbtBlue +
-                       new_image[i][j + 1].rgbtBlue +
-                       new_image[i + 1][j - 1].rgbtBlue +
-                       new_image[i + 1][j].rgbtBlue +
-                       new_image[i + 1][j + 1].rgbtBlue;
-            
-            color[1] = new_image[i - 1][j - 1].rgbtGreen +
-                       new_image[i - 1][j].rgbtGreen +
-                       new_image[i - 1][j + 1].rgbtGreen +
-                       new_image[i][j - 1].rgbtGreen +
-                       new_image[i][j].rgbtGreen +
-                       new_image[i][j + 1].rgbtGreen +
-                       new_image[i + 1][j - 1].rgbtGreen +
-                       new_image[i + 1][j].rgbtGreen +
-                       new_image[i + 1][j + 1].rgbtGreen;
-            
-            color[2] = new_image[i - 1][j - 1].rgbtRed +
-                       new_image[i - 1][j].rgbtRed +
-                       new_image[i - 1][j + 1].rgbtRed +
-                       new_image[i][j - 1].rgbtRed +
-                       new_image[i][j].rgbtRed +
-                       new_image[i][j + 1].rgbtRed +
-                       new_image[i + 1][j - 1].rgbtRed +
-                       new_image[i + 1][j].rgbtRed +
-                       new_image[i + 1][j + 1].rgbtRed;
-            
+
+            /* resetting color variables for each pixel */
+            color[0] = color[1] = color[2] = 0;
+            for (int h = -1; h < 2; h++)
+            {
+                for (int k = -1; k < 2; k++)
+                {
+                    color[0] += new_image[i + h][j + k].rgbtBlue;
+                    color[1] += new_image[i + h][j + k].rgbtGreen;
+                    color[2] += new_image[i + h][j + k].rgbtRed;
+                }
+            }
+    
             /* border pixels only have 6 pixels to average (inclusive of the current) */
             if (is_border(i - 1, j - 1, height, width) == 1)
             {
