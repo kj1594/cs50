@@ -1,5 +1,7 @@
 // Implements a dictionary's functionality
 #include <string.h>
+#include <strings.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
@@ -31,7 +33,7 @@ int allocation_count = 0;
 /* a counter for number of nodes loaded (including collisons) */
 int word_count = 0;
 // Hash table
-node *table[N];
+node *table[N] = {NULL};
 
 // Returns true if word is in dictionary else false
 bool check(const char *word)
@@ -40,14 +42,24 @@ bool check(const char *word)
     if (table[hash_of_word] != NULL)
     {
         node *current = table[hash_of_word];
-        do
+        if (current->next != NULL)
         {
-            if (strcmp(current->word, word) == 0)
+            while(current->next != NULL)
+            {
+                if (strcasecmp(word, current->word) == 0)
+                {
+                    return true;
+                }
+                current = current->next;
+            }
+        }
+        else
+        {
+            if (strcasecmp(word, current->word) == 0)
             {
                 return true;
             }
-            current = current->next;
-        } while (current->next != NULL);
+        }
     }
     return false;
 }
@@ -59,21 +71,25 @@ unsigned int hash(const char *word)
     int length = strlen(word);
     /* length of padding required */
     int padding_length = PADDING_SIZE - (length % PADDING_SIZE);
-
+    int new_length = padding_length + length;
     /* new padded string */
-    char padded_string[padding_length + length];
+    char padded_string[new_length];
     /* copying the current string to padded string container */
     strcpy(padded_string, word);
     /* adding the padding */
-    for (int i = 0; i < padding_length; i++)
+    for (int i = 0; i < padding_length - 1; i++)
     {
-        padded_string[i + length] = '0' + (padding_length - i);
+        padded_string[i + length] = '0';
     }
+    padded_string[new_length - 1] = '\0';
 
+    for (int i = 0; i < new_length; i++)
+    {
+        padded_string[i] = tolower(padded_string[i]);
+    }
     /* some primes for randomness */
     int primes[10] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
     unsigned int result = 0;
-    int new_length = padding_length + length;
 
     /* calculations of the hash */
     for (int i = 0; i < new_length; i++)
@@ -129,25 +145,30 @@ bool load(const char *dictionary)
                 current->next = prevoius;
                 word_count += 1;
             }
-            /* now hash table poits to the node */
-            table[hash_of_current] = current;
-            /* and the new node points to nothing */
-            current->next = NULL;
-            /* keeping a record of all allocated entries*/
-            allocated_entries[allocation_count] = hash_of_current;
-            allocation_count += 1;
-            word_count += 1;
+            else
+            {
+                /* now hash table poits to the node */
+                table[hash_of_current] = current;
+                /* and the new node points to nothing */
+                current->next = NULL;
+                /* keeping a record of all allocated entries*/
+                allocated_entries[allocation_count] = hash_of_current;
+                allocation_count += 1;
+                word_count += 1;
+            }
         }
+        fclose(file);
+        printf("Allocation Count: %i\nWord Count: %i\n", allocation_count, word_count);
         return true;
     }
-    
+    fclose(file);
     return false;
 }
 
 // Returns number of words in dictionary if loaded else 0 if not yet loaded
 unsigned int size(void)
 {
-    return word_count;
+    return word_count - 1;
 }
 
 // Unloads dictionary from memory, returning true if successful else false
@@ -179,8 +200,8 @@ void read_word(FILE *file, char *buffer)
         i += 1;
     }
     while (!feof(file));
-    /* dont forget the string terminator - or do. They are not checking for this. */
-    //buffer[i] = '\0';
+    /* dont forget the string terminator */
+    buffer[i] = '\0';
 }
 
 void unload_list(node *list)
