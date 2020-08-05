@@ -15,5 +15,7 @@ unsigned int hash(const char *word);
 bool load(const char *dictionary);
 unsigned int size(void);
 bool unload(void);
-
+/* functions I defined */
+void read_word(FILE *file, char *buffer);
+/* free linked list */
 #endif // DICTIONARY_H

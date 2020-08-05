@@ -3,10 +3,13 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "dictionary.h"
 
+/* padding used for strings */
 #define PADDING_SIZE 16
+
 // Represents a node in a hash table
 typedef struct node
 {
@@ -15,16 +18,37 @@ typedef struct node
 }
 node;
 
-// Number of buckets in hash table
+/* function declaration because node is not defined in the header */
+void unload_list(node *list);
+
+/* Number of buckets in hash table */
 const unsigned int N = 10000;
 
+/* a cached array of all allocated entries */
+int allocated_entries[N];
+/* counter for number of nodes assigned to an entry in the hash table */
+int allocation_count = 0;
+/* a counter for number of nodes loaded (including collisons) */
+int word_count = 0;
 // Hash table
 node *table[N];
 
 // Returns true if word is in dictionary else false
 bool check(const char *word)
 {
-    // TODO
+    unsigned int hash_of_word = hash(word);
+    if (table[hash_of_word] != NULL)
+    {
+        node *current = table[hash_of_word];
+        do
+        {
+            if (strcmp(current->word, word) == 0)
+            {
+                return true;
+            }
+            current = current->next;
+        } while (current->next != NULL);
+    }
     return false;
 }
 
@@ -72,10 +96,49 @@ unsigned int hash(const char *word)
 // Loads dictionary into memory, returning true if successful else false
 bool load(const char *dictionary)
 {
+    /* The idea is to read the dictionary into a hash-table */
     FILE *file = fopen(dictionary, "r");
     if (file == NULL)
     {
         return false;
+    }
+    else
+    {
+        /* this is pretty self explanatory */
+        while (!feof(file))
+        {
+            /* allocating space to store a new node */
+            node *current = malloc(sizeof(node));
+            if (current == NULL)
+            {
+                return false;
+            }
+            /* this function reads into the current node characters until a \n is encountered */
+            read_word(file, current->word);
+            /* calculating the hash here */
+            int hash_of_current = hash(current->word);
+            /* if there is alread an element at the given hash (collision) 
+                we just append the node to the front of the linked list */
+            if (table[hash_of_current] != NULL)
+            {
+                /* new node stores the pointer to the original element */
+                node *prevoius = table[hash_of_current];
+                /* now hash table points to the new element */
+                table[hash_of_current] = current;
+                /* and the new element points to the older node */
+                current->next = prevoius;
+                word_count += 1;
+            }
+            /* now hash table poits to the node */
+            table[hash_of_current] = current;
+            /* and the new node points to nothing */
+            current->next = NULL;
+            /* keeping a record of all allocated entries*/
+            allocated_entries[allocation_count] = hash_of_current;
+            allocation_count += 1;
+            word_count += 1;
+        }
+        return true;
     }
     
     return false;
@@ -84,13 +147,51 @@ bool load(const char *dictionary)
 // Returns number of words in dictionary if loaded else 0 if not yet loaded
 unsigned int size(void)
 {
-    // TODO
-    return 0;
+    return word_count;
 }
 
 // Unloads dictionary from memory, returning true if successful else false
 bool unload(void)
 {
-    // TODO
-    return false;
+    for (int i = 0; i < allocation_count; i++)
+    {
+        if (table[allocated_entries[i]] != NULL)
+        {
+            unload_list(table[allocated_entries[i]]);
+        }
+    }
+    return true;
+}
+
+void read_word(FILE *file, char *buffer)
+{
+    char next;
+    int i = 0;
+    do
+    {
+        /* read the characters until we encounter a newline */
+        next = fgetc(file);
+        if (next == '\n')
+        {
+            break;
+        }
+        buffer[i] = next;
+        i += 1;
+    }
+    while (!feof(file));
+    /* dont forget the string terminator - or do. They are not checking for this. */
+    //buffer[i] = '\0';
+}
+
+void unload_list(node *list)
+{
+    if (list->next == NULL)
+    {
+        free(list);
+    }
+    else
+    {
+        unload_list(list->next);
+        free(list);
+    }
 }
