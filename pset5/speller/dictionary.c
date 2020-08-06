@@ -1,16 +1,20 @@
 // Implements a dictionary's functionality
-#include <string.h>
-#include <strings.h>
-#include <ctype.h>
 #include <stdbool.h>
+
+/* needed for strlen() */
+#include <string.h>
+/* needed for strcasecmmp() */
+#include <strings.h>
+/* needed for pow() and floor() */
 #include <math.h>
+/* needed for tolower() */
+#include <ctype.h>
+/* for printf() */
 #include <stdio.h>
+/* for malloc() and free() */
 #include <stdlib.h>
 
 #include "dictionary.h"
-
-/* padding used for strings */
-#define PADDING_SIZE 16
 
 // Represents a node in a hash table
 typedef struct node
@@ -20,199 +24,191 @@ typedef struct node
 }
 node;
 
-/* function declaration because node is not defined in the header */
-void unload_list(node *list);
+/* read characters into buffer until newline is encountered */
+void read_word(FILE *file, char *buffer);
+/* free cells of the table and the linked lists within them */
+void free_cells(node *cell);
 
-/* Number of buckets in hash table */
+
+// Number of buckets in hash table
 const unsigned int N = 10000;
 
-/* a cached array of all allocated entries */
-int allocated_entries[N];
-/* counter for number of nodes assigned to an entry in the hash table */
-int allocation_count = 0;
-/* a counter for number of nodes loaded (including collisons) */
-int word_count = 0;
 // Hash table
-node *table[N] = {NULL};
+node *table[N];
+
+/* the cache of cells that are already assigned */
+unsigned int assigned_cells[N];
+/* count of assigned cells */
+int cell_assignment_count = 0;
+/* number of words (nodes) loaded into the memory */
+int words_added = 0;
 
 // Returns true if word is in dictionary else false
 bool check(const char *word)
 {
-    unsigned int hash_of_word = hash(word);
-    if (table[hash_of_word] != NULL)
+    /* hashing the inputs */
+    unsigned int _hash = hash(word);
+    /* if no cell is assigned that hash - the word does not exist in our dictionary */
+    if (table[_hash] == NULL)
     {
-        node *current = table[hash_of_word];
-        if (current->next != NULL)
+        return false;
+    }
+    /* else it exists and we must find it */
+    else
+    {
+        node *current_node = table[_hash];
+        while (true)
         {
-            while(current->next != NULL)
-            {
-                if (strcasecmp(word, current->word) == 0)
-                {
-                    return true;
-                }
-                current = current->next;
-            }
-        }
-        else
-        {
-            if (strcasecmp(word, current->word) == 0)
+            /* if it is the first node of the linked list */
+            if (strcasecmp(current_node->word, word) == 0)
             {
                 return true;
             }
+            /* if the current node is the last element - we haven't found the word */
+            else if (current_node->next == NULL)
+            {
+                return false;
+            }
+            /* move on to the next element */
+            current_node = current_node->next;
         }
     }
+    /* this statement will never be reached hah */
     return false;
 }
 
 // Hashes word to a number
 unsigned int hash(const char *word)
 {
-    /* length of given string */
-    int length = strlen(word);
-    /* length of padding required */
-    int padding_length = PADDING_SIZE - (length % PADDING_SIZE);
-    int new_length = padding_length + length;
-    /* new padded string */
-    char padded_string[new_length];
-    /* copying the current string to padded string container */
-    strcpy(padded_string, word);
-    /* adding the padding */
-    for (int i = 0; i < padding_length - 1; i++)
+    int string_length = strlen(word);
+    unsigned int _hash = 0;
+
+    /* prime numbers provide good pseudo-randomness if square-root is calculated */
+    int primes[12] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37};
+    /* selecting one prime number to use */
+    int prime_first = string_length % 12;
+
+    for (int i = 0; i < string_length; i++)
     {
-        padded_string[i + length] = '0';
+        char current = word[i];
+        /* the dictionary lookup is case insensitive */
+        current = tolower(current);
+        /* some random mathematics */
+        double result = pow((int) current, 2) + pow(primes[prime_first], 0.5);
+        _hash = _hash + (int) floor(pow(result, 0.5));
     }
-    padded_string[new_length - 1] = '\0';
-
-    for (int i = 0; i < new_length; i++)
-    {
-        padded_string[i] = tolower(padded_string[i]);
-    }
-    /* some primes for randomness */
-    int primes[10] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
-    unsigned int result = 0;
-
-    /* calculations of the hash */
-    for (int i = 0; i < new_length; i++)
-    {
-        /* the integer representing the char */
-        int int_of_char = (int) padded_string[i];
-        /* randomly (pseudo) selecting a prime number for the given character */
-        int index_of_primes = ((i * length) + (int) floor(pow(int_of_char, 0.5))) % 10;
-
-
-        double current = (double) int_of_char * pow(primes[index_of_primes], 0.5);
-        current = pow((pow(result, 2) + pow(current, 2)), 0.5);
-        result = result + (int) current;
-        /* N is the maximum number of buckets in our hashtable */
-        result = result % N;
-    }
-    return result;
+    /* compressing the hash value to be bound by N */
+    _hash = _hash % N;
+    return _hash;
 }
 
 // Loads dictionary into memory, returning true if successful else false
 bool load(const char *dictionary)
 {
-    /* The idea is to read the dictionary into a hash-table */
+    /* This function will try to read the dictionary file and load words into the memory one word at a time */
     FILE *file = fopen(dictionary, "r");
     if (file == NULL)
     {
         return false;
     }
-    else
+
+    while (!feof(file))
     {
-        /* this is pretty self explanatory */
-        while (!feof(file))
+        /* a new node for inserting a new word */
+        node *current_node = malloc(sizeof(node));
+        current_node->next = NULL;
+        /* initializing the word field of the node - not required but for safety */
+        for (int i = 0; i < LENGTH; i++)
         {
-            /* allocating space to store a new node */
-            node *current = malloc(sizeof(node));
-            if (current == NULL)
-            {
-                return false;
-            }
-            /* this function reads into the current node characters until a \n is encountered */
-            read_word(file, current->word);
-            /* calculating the hash here */
-            int hash_of_current = hash(current->word);
-            /* if there is alread an element at the given hash (collision) 
-                we just append the node to the front of the linked list */
-            if (table[hash_of_current] != NULL)
-            {
-                /* new node stores the pointer to the original element */
-                node *prevoius = table[hash_of_current];
-                /* now hash table points to the new element */
-                table[hash_of_current] = current;
-                /* and the new element points to the older node */
-                current->next = prevoius;
-                word_count += 1;
-            }
-            else
-            {
-                /* now hash table poits to the node */
-                table[hash_of_current] = current;
-                /* and the new node points to nothing */
-                current->next = NULL;
-                /* keeping a record of all allocated entries*/
-                allocated_entries[allocation_count] = hash_of_current;
-                allocation_count += 1;
-                word_count += 1;
-            }
+            current_node->word[i] = '\0';
         }
-        fclose(file);
-        printf("Allocation Count: %i\nWord Count: %i\n", allocation_count, word_count);
-        return true;
+        /* reads a word into the current node */
+        read_word(file, current_node->word);
+        unsigned int _hash = hash(current_node->word);
+        
+        /* a hash of it already exists - either the word is a repeat or a collison of hash has occured */
+        if (table[_hash] != NULL)
+        {
+            /* inserting the new node at the front of the linked list pointed to by that cell */
+            node *temporary = table[_hash];
+            table[_hash] = current_node;
+            current_node->next = temporary;
+            /* since a word is now loaded but no new cell is assigned */
+            words_added += 1;
+        }
+        else
+        {
+            /* assignment to a new cell */
+            table[_hash] = current_node;
+            /* caching the hash for faster retrival (not acceptable if the entire table is used) */
+            assigned_cells[cell_assignment_count] = _hash;
+            /* a new word has been added and a new cell has been assigned */
+            cell_assignment_count += 1;
+            words_added += 1;
+        }
     }
     fclose(file);
-    return false;
+    return true;
 }
 
 // Returns number of words in dictionary if loaded else 0 if not yet loaded
 unsigned int size(void)
 {
-    return word_count - 1;
+    /* we already know the word count */
+    return words_added - 1;
 }
 
 // Unloads dictionary from memory, returning true if successful else false
 bool unload(void)
 {
-    for (int i = 0; i < allocation_count; i++)
+    /* we already have the list of cells that are assigned some values */
+    for (int i = 0; i < cell_assignment_count; i++)
     {
-        if (table[allocated_entries[i]] != NULL)
-        {
-            unload_list(table[allocated_entries[i]]);
-        }
+        free_cells(table[assigned_cells[i]]);
+        table[assigned_cells[i]] = NULL;
     }
     return true;
 }
 
 void read_word(FILE *file, char *buffer)
 {
-    char next;
-    int i = 0;
-    do
+    /**
+     * This function assumes that the file pointer is valid and opened in read mode
+     * The function reads characters into the buffer until a newline is encountered
+     * assuming the buffer provided has enough space
+    */
+
+    char current = '\0';
+    /* counter for traversing the buffer */
+    int counter = 0;
+    while (!feof(file))
     {
-        /* read the characters until we encounter a newline */
-        next = fgetc(file);
-        if (next == '\n')
+        current = fgetc(file);
+        if (current == '\n')
         {
             break;
         }
-        buffer[i] = next;
-        i += 1;
+        buffer[counter] = current;
+        counter += 1;
     }
-    while (!feof(file));
-    /* dont forget the string terminator */
-    buffer[i] = '\0';
+    /* not forgetting to add the string terminating character */
+    buffer[counter] = '\0';
+    return;
 }
 
-void unload_list(node *list)
+void free_cells(node *cell)
 {
-    if (list->next == NULL)
+    /* this function recursively frees nodes and the cells of the table */
+    if (cell->next == NULL)
     {
-        free(list);
+        /* the last cell of linked list */
+        free(cell);
     }
+    /* else free the next node first */
     else
     {
-        unload_list(list->next);
-        free(list);
+        free_cells(cell->next);
+        free(cell);
     }
+    return;
 }
