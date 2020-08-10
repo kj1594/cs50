@@ -14,13 +14,13 @@ int main()
     /* calculations */
     while (text[i] != '\0')
     {
-        /* if the character is an alphhabet */
+        /* if the character is an alphabet */
         if (((text[i] >= 'a') && (text[i] <= 'z')) || ((text[i] >= 'A') && (text[i] <= 'Z')))
         {
             letters = letters + 1;
         }
 
-        /* if the chararcter is a space */
+        /* if the character is a space */
         else if (text[i] == ' ')
         {
             words = words + 1;
