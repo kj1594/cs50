@@ -192,7 +192,14 @@ def history():
         transaction_history.append(per_item_template)
 
     transactions = len(raw_history)
-    return render_template('history.html', history=transaction_history, no_history=False, transactions=transactions, usd=usd, total=total)
+    return render_template(
+        'history.html',
+        history=transaction_history,
+        no_history=False,
+        transactions=transactions,
+        usd=usd,
+        total=total
+    )
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -438,10 +445,34 @@ def errorhandler(e):
     return apology(e.name, e.code)
 
 
+@app.route('/add', methods=['GET', 'POST'])
+@login_required
+def add():
+    """
+    Add cash to your account
+    """
+    if request.method in ('POST',):
+	    amount = float(request.form.get('amount'))
+	    cash = db.execute(
+	        "SELECT * FROM users WHERE id = :user_id",
+	        user_id=session['user_id']
+	    )
+	    if not cash:
+	        flash("Something went wrong somewhere. Please try again later.", "danger")
+	        return render_template('add.html', added=False)
+	    else:
+	        cash = cash[0]['cash']
+
+	    db.execute(
+	        "UPDATE users SET cash = :total WHERE id = :user_id",
+	        user_id=session['user_id'],
+	        total=(cash + amount)
+	    )
+	    return render_template('add.html', cash=(cash + amount), transaction_amount=amount, added=True, usd=usd)
+	else:
+		return render_template('add.html', added=False)
+
+
 # Listen for errors
 for code in default_exceptions:
     app.errorhandler(code)(errorhandler)
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
