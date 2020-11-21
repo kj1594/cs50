@@ -3,6 +3,7 @@ Map = Class {}
 -- Quad generation functions
 require("src/utils")
 require("src/player")
+require("src/animation")
 
 -- quad_map
 quads = {
@@ -31,7 +32,7 @@ function Map:init()
     self.tile_height = 16
 
     -- Area of the map
-    self.width = 90
+    self.width = 30
     self.height = 28
 
     -- map dimentions in pixels
@@ -58,7 +59,18 @@ function Map:init()
         end
     end
 
+    self.flag_animation = Animation({
+        texture = self.texture,
+        frames = {
+            self.sprites[quads.flag_1], self.sprites[quads.flag_2], self.sprites[quads.flag_3]
+        },
+        interval = 0.25
+    })
+
     self:procedural_generate()
+    self:generate_pyramid()
+    self:generate_pole()
+    self:generate_flag()
 
     -- player object
     self.player = Player(self)
@@ -96,6 +108,8 @@ function Map:update(dt)
     local righter_most = math.min(self.player.x, self.width_pixels - screen.virtual_width)
     local lefter_most = math.min(self.player.x - screen.virtual_width / 2, righter_most)
     self.cam_x = math.max(0, lefter_most)
+
+    self.flag_animation:update(dt)
 end
 
 
@@ -178,7 +192,6 @@ function Map:procedural_generate()
             x = x + 1
         elseif math.random(5) == 1 then
             x = x + 2
-
         end
     end
 end
@@ -189,7 +202,10 @@ function Map:collision(x, y)
         quads.pipe_top,
         quads.pipe_bottom,
         quads.jump_box,
-        quads.jump_box_hit
+        quads.jump_box_hit,
+        quads.pole_top,
+        quads.pole_mid,
+        quads.pole_bottom
     }
 
     for _, v in ipairs(solid) do
@@ -198,4 +214,42 @@ function Map:collision(x, y)
         end
     end
     return false
-end 
+end
+
+function Map:generate_pyramid()
+    local size = 6
+    local pos_x = self.width - size - 6
+    local pos_y = self.ground
+    local current_x = 0
+
+    for y = 1, size do
+        for x = y, size do
+            self:set_tile(pos_x + x, pos_y - y, quads.brick)
+        end
+    end
+end
+
+
+function Map:generate_pole()
+    local height = 8
+    local pos_x = self.width - 2
+    local pos_y = self.ground
+
+    for y = 1, height do
+        if y == 1 then
+            self:set_tile(pos_x, pos_y - y, quads.pole_bottom)
+        elseif y == height then
+            self:set_tile(pos_x, pos_y - y, quads.pole_top)
+        else
+            self:set_tile(pos_x, pos_y - y, quads.pole_mid)
+        end
+    end
+end
+
+
+function Map:generate_flag()
+    local pos_x = self.width - 1
+    local pos_y = self.ground - 8
+    self:set_tile(pos_x, pos_y, quads.flag_1)
+end
+
