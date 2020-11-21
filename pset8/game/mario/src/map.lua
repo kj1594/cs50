@@ -31,7 +31,7 @@ function Map:init()
     self.tile_height = 16
 
     -- Area of the map
-    self.width = 30
+    self.width = 90
     self.height = 28
 
     -- map dimentions in pixels
@@ -62,6 +62,10 @@ function Map:init()
 
     -- player object
     self.player = Player(self)
+
+    sounds.background:setLooping(true)
+    sounds.background:setVolume(0.40)
+    sounds.background:play()
 end
 
 
@@ -119,7 +123,7 @@ function Map:procedural_generate()
 
         -- clouds
         if x < self.width - 2 then
-            if math.random(15) == 1 then
+            if math.random(14) == 1 then
                 local cloud_height = math.random(self.ground - 6)
                 self:set_tile(x, cloud_height, quads.cloud_left)
                 self:set_tile(x + 1, cloud_height, quads.cloud_right)
@@ -145,7 +149,7 @@ function Map:procedural_generate()
                 end
                 x = x + 1
             end
-        elseif math.random(12) == 1 then
+        elseif math.random(15) == 1 then
             if 2 < x and x < self.width - 2 then
                 self:set_tile(x, self.ground - 2, quads.pipe_top)
                 self:set_tile(x, self.ground - 1, quads.pipe_bottom)
